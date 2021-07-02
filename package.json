@@ -1,4 +1,11 @@
 {
+  "name": "oauth_tutorial",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "@hubspot/api-client": "^4.0.0",
     "dotenv": "^6.0.0",
