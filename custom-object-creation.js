@@ -33,7 +33,7 @@ const createCustomObject = async (customObject, apiKey) => {
 }
 
 const customObject = createCustomObject(objectMarkup, API_KEY);
-console.log('customObject')
-console.log(customObject)
-
+// console.log('customObject')
+// console.log(customObject)
+// https://share.hsforms.com/1HQFxv1OERwizjJW_wbPB0Q3fmpl
 
