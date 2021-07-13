@@ -1,0 +1,82 @@
+{
+  "name": "event_object",
+  "labels": {
+    "singular": "Event",
+    "plural": "Events"
+  },
+  "requiredProperties": [
+    "event_id",
+    "event_name",
+    "event_date",
+    "first_name",
+    "last_name",
+    "email",
+    "rsvp",
+    "guests"
+  ],
+  "properties": [
+    {
+      "name": "event_name",
+      "label": "Event Name",
+      "type": "string",
+      "fieldType": "text",
+      "isPrimaryDisplayLabel": true
+    },
+    {
+      "name": "event_id",
+      "label": "Event ID",
+      "type": "string",
+      "fieldType": "text"
+    },
+    {
+      "name": "first_name",
+      "label": "First Name",
+      "type": "string",
+      "fieldType": "text"
+    },
+    {
+      "name": "last_name",
+      "label": "Last Name",
+      "type": "string",
+      "fieldType": "text"
+    },
+    {
+      "name": "email",
+      "label": "Email Address",
+      "type": "string",
+      "fieldType": "text"
+    },
+    {
+      "name": "rsvp",
+      "label": "RSVP",
+      "type": "enumeration",
+      "fieldType": "radio",
+      "options": [
+          {
+              "label": "Yes",
+              "value": "yes"
+          },
+          {
+              "label": "No",
+              "value": "no"
+          }
+      ]
+    },
+    {
+      "name": "guests",
+      "label": "Guests",
+      "type": "number",
+      "fieldType": "number"
+    },
+    {
+      "name": "event_date",
+      "label": "Event Date",
+      "type": "date",
+      "fieldType": "date"
+    }
+  ],
+  "associatedObjects": [
+      "CONTACT"
+  ],
+  "primaryDisplayProperty": "event_name"
+}

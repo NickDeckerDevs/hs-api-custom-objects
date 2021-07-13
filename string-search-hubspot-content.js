@@ -1,3 +1,25 @@
+/*
+ *
+ * Debit Card Spend Limits
+2.       Debit Card Limits
+
+3.       Debit Spend Limits
+
+4.       Debit Card Spend
+
+5.       Card Spend Limits
+
+6.       Debit Limits
+
+7.       Debit Spend
+
+8.       Card Limits
+ * 
+ * 
+ * 
+ */ 
+
+
 require('dotenv').config()
 const express = require('express')
 const request = require('request-promise-native')
@@ -6,7 +28,24 @@ const session = require('express-session')
 const opn = require('open')
 const app = express()
 
-const { APP_ID, CLIENT_ID, CLIENT_SECRET, LOCAL_URL, BASE_URL, SCOPE, PORT, AUTH_CALLBACK } = process.env
+const { APP_ID, CLIENT_ID, HS_BASE_URL, CLIENT_SECRET, LOCAL_URL, BASE_URL, SCOPE, PORT, AUTH_CALLBACK } = process.env
+
+
+const queryOptions = {
+  endpoint: '/contentsearch/v2/search',
+  terms: [
+    'Debit Card Limits'
+  ],
+  types: [
+    'SITE_PAGE',
+    'LANDING_PAGE',
+    'BLOG_POST'
+  ],
+  portalId: 1765103,
+  baseUrl: HS_BASE_URL
+}
+
+
 
 
 const refreshTokenStore = {}
@@ -44,6 +83,11 @@ const authUrl =
   `&scope=${encodeURIComponent(SCOPES)}`// scopes being requested
   
 console.log(`=====> authUrl: ${authUrl}`)
+
+
+
+
+
 
 app.get('/install', (req, res) => {
   console.log('')
@@ -128,158 +172,52 @@ const isAuthorized = (userId) => {
   return refreshTokenStore[userId] ? true : false
 }
 
+// const queryOptions = {
+//   endpoint: '/contentsearch/v2/search',
+//   terms: [
+//     'Debit Card Limits'
+//   ],
+//   types: [
+//     'SITE_PAGE',
+//     'LANDING_PAGE',
+//     'BLOG_POST'
+//   ],
+//   portalId: 1765103,
+//   baseUrl: HS_BASE_URL
+// }
 
-const getContact = async (accessToken) => {
-  console.log('getting contact')
+const getSearchResults = async (accessToken, queryOptions) => {
+  console.log('searching')
   try {
     const headers = {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
     }
-    console.log('===> Replace the following request.get() to test other API calls')
-    console.log('===> request.get(\'https://api.hubapi.com/contacts/v1/lists/all/contacts/all?count=1\')')
-    const result = await request.get('https://api.hubapi.com/contacts/v1/lists/all/contacts/all?count=1', {
+
+    let typeQuery = queryOptions.types.join('&type=')
+    let apiQuery = `${queryOptions.baseUrl}${queryOptions.endpoint}?portalId=${queryOptions.portalId}&term=${queryOptions.terms[0]}&type=${typeQuery}`
+
+
+    const result = await request.get(apiQuery, {
       headers: headers
     });
 
-    return JSON.parse(result).contacts[0]
+    return JSON.parse(result).results[0]
 
   } catch (e) {
-    console.error('  > Unable to retrieve contact')
+    console.error('  > Unable to retrieve search')
     return JSON.parse(e.response.body)
   }
 }
 
-const createObject = async (accessToken) => {
-  console.log('');
-  console.log('=== Creating that custom object ===');
-  try {
-    const headers = {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    };
-    
-    console.log('===> request.post(\'https://api.hubapi.com/crm/v3/schemas\')');
-    
-    const result = await request.post('https://api.hubapi.com/crm/v3/schemas', {
-      headers: headers,
-      body: {
-        name: 'event_object',
-        labels: { 
-          singular: 'Event', 
-          plural: 'Events' 
-        },
-        requiredProperties: [
-          'event_id', 
-          'event_name',
-          'event_date', 
-          'first_name', 
-          'last_name', 
-          'email', 
-          'rsvp', 
-          'guests'
-        ],
-        properties: [
-          { 
-            name: 'event_name', 
-            label: 'Event Name', 
-            type: 'string',
-            fieldType: 'text',
-            isPrimaryDisplayLabel: true
-          },
-          { 
-            name: 'event_id', 
-            label: 'Event ID', 
-            type: 'string',
-            fieldType: 'text'
-          },
-          { 
-            name: 'first_name', 
-            label: 'First Name', 
-            type: 'string',
-            fieldType: 'text'
-          },
-          { 
-            name: 'last_name', 
-            label: 'Last Name', 
-            type: 'string',
-            fieldType: 'text'
-          },
-          { 
-            name: 'email', 
-            label: 'Email Address', 
-            type: 'string',
-            fieldType: 'text'
-          },
-          { 
-            name: 'rsvp', 
-            label: 'RSVP', 
-            type: 'enumeration',
-            fieldType: 'select',
-            options: [
-              {
-                label: 'Yes',
-                value: 'yes'
-              },
-              {
-                label: 'No',
-                value: 'no'
-              }
-            ],
-            fieldType: 'text'
-          },
-          { 
-            name: 'guests', 
-            label: 'Guests', 
-            type: 'number',
-            fieldType: 'number'
-          },
-          {
-            name: 'event_date',
-            label: 'Event Date',
-            type: 'date',
-            fieldType: 'date'
-          }
-        ],
-        associatedObjects: ['CONTACT']
-      },
-      json: true
-    });
-
-    return JSON.parse(result);
-  } catch (e) {
-    console.error('  > Unable to create object');
-    console.log('e', e)
-    return JSON.parse(e);
-  }
-};
-
-
-const displayContactName = (res, contact) => {
-  if (contact.status === 'error') {
-    res.write(`<p>unable to retrieve contact! ErrorMessage: ${contact.message}</p>`)
-    return
-  }
-  const { firstname, lastname } = contact.properties
-  res.write(`<p>Contact Name: ${firstname.value} ${lastname.value}</p>`)
-}
-
-const displayObjectResult = (res, customObject) => {
-  if(customObject.status === 'error') {
-    res.write(`<h3>WILL NOT WORK. MESSAGE IN A BOTTLE: ${customObject.message}</h3>`)
-    return
-  }
-  const results = customObject
-  res.write(JSON.parse(results))
-}
 
 app.get('/', async (req, res) => {
   res.setHeader('Content-Type', 'text/html')
   res.write(`<h2>chickens don't get a chance to gobble if they are always clucking up</h2>`)
   if (isAuthorized(req.sessionID)) {
     const accessToken = await getAccessToken(req.sessionID)
-    createObject
-    const customObject = await createObject(accessToken);
+    
+    const searchResults = await getSearchResults(accessToken);
 
     console.log(JSON.stringify(result.body))
     res.write(`<h4>Access token: ${accessToken}</h4>`)
