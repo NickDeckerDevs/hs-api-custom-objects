@@ -1049,27 +1049,19 @@ const pageIds = [
 
 const queryOptions = {
   endpoint: '/contentsearch/v2/search',
-  // terms: [
-  //   'debit+Card+Limits',
-  //   'Debit+Spend+Limits',
-  //   'Debit+Card+Spend',
-  //   'Card+Spend+Limits',
-  //   'Debit+Limits',
-  //   'Debit+Spend',
-  //   'Card+Limits',
-  //   'Small Business Checking'
-  // ],
   terms: [
-      'new+horizons',
-      'access+checking',
-      'connect+checking',
-      'priority+checking',
-      'silver+savings'
-    ],
+    'debit+Card+Limits',
+    'Debit+Spend+Limits',
+    'Debit+Card+Spend',
+    'Card+Spend+Limits',
+    'Debit+Limits',
+    'Debit+Spend',
+    'Card+Limits',
+    
+  ],
   types: [
     'SITE_PAGE',
-    'LANDING_PAGE',
-    'BLOG_POST'
+    'LANDING_PAGE'
   ],
   portalId: 1765103,
   baseUrl: HS_BASE_URL,
@@ -1199,30 +1191,97 @@ const isAuthorized = (userId) => {
   return refreshTokenStore[userId] ? true : false
 }
 
+function buildContentSearchQuery(queryOptions, termId) {
+  let query = `${queryOptions.baseUrl}${queryOptions.endpoint}?portalId=${queryOptions.portalId}`
+  const typeQuery = queryOptions['types'].join('&type=')
+  query += `&type=${typeQuery}`
+  query += `&term=\"${queryOptions.terms[termId]}\"`
+  if(queryOptions.offset) {
+    query += `&offset=${queryOptions.offset}`
+  } else {
+    query += `&offset=0`
+  }
+  if(queryOptions.limit) {
+    query += `&limit=${queryOptions.limit}`
+  } else {
+    query += `&offset=100`
+  }
+  return query
+}
+
+
+const getSearchResults = async (accessToken, queryOptions) => {
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json'
+  }
+
+  const allResults = []
+  // for(let i = 0; i < 2; i++) {
+  for(let i = 0; i < queryOptions.terms.length; i++) {
+    let termId = i
+    queryOptions.completed = 0
+    queryOptions.total = 0
+    queryOptions.offset = 0
+    do {
+        
+      try {
+        let apiQuery = buildContentSearchQuery(queryOptions, termId)
+        console.log('apiurl:', apiQuery)
+
+        const result = await request.get(apiQuery, {
+          headers: headers
+        });
+        const results = JSON.parse(result)
+        
+        allResults.push(results.results)
+        
+        queryOptions.offset = queryOptions.limit + queryOptions.offset
+        queryOptions.completed = queryOptions.offset
+        queryOptions.total = results.total
+        console.log('one down: ', queryOptions)
+        
+
+      } catch (e) {
+        console.error(e)
+        console.error('  > Unable to retrieve search')
+        return JSON.parse(e)
+      }
+    } while (queryOptions.total > queryOptions.completed)
+  }
+  
+
+  return allResults
+
+}
 
 const getPageResults = async (accessToken, pageIds) => {
   const file = 'results.csv'
   var logger = fs.createWriteStream(file, {
     flags: 'a' // 'a' means appending (old data will be preserved)
   })
+  console.log('first result:', results[0])
+  // for output
+  // const lineItem = `${index},${score},${title},${url}\r\n`
+  
 
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json'
   }
 
-  const length = 1200
-  const start = 900
-
-  if(start == 0) logger.write(`ID,Score,Term,URL,Title\r\n`)
+  const allResults = []
+  // for(let i = 0; i < 2; i++) {
+  // const length = pageIds.length
+  const length = 10
+  const start = 0
+  if(start == 0) logger.write(`ID,Score,URL,Title\r\n`)
   for(let i = start; i < length; i++) {
-    
     const pageId = pageIds[i].split(':')[0]
     let score = Number(pageIds[i].split(':')[1])
-    let terms = ''
     try {
       const pageQuery = `${HS_BASE_URL}/content/api/v2/pages/${pageId}`
-      
+      // console.log('pageQuery:', pageQuery)
       const result = await request.get(pageQuery, {
         headers: headers
       });
@@ -1248,9 +1307,7 @@ const getPageResults = async (accessToken, pageIds) => {
                 if(scoreThis(content, term) === true) {
                   // console.log('current score = ', score)
                   // console.log('we have a match')
-                  terms = terms + term + ' & '
                   score = score + 1
-                  
                   // console.log('score:', score)
                 } 
               })
@@ -1259,16 +1316,14 @@ const getPageResults = async (accessToken, pageIds) => {
             
           }) 
       }
-      if(terms && terms.length > 4) {
-        terms = terms.replace('+', ' ')
-      } else {
-        terms = 'no match'
-      }
-      
-      const lineItem = `${i},${score},${terms},${apiResult['published_url']},${apiResult['html_title']}\r\n`
+      const lineItem = `${i},${score},${apiResult['published_url']},${apiResult['html_title']}\r\n`
       console.log(lineItem)
-      
+      // for ids
+      // const lineItem = `'${result.id}:${result.score}',\r\n`
+      // data.push(lineItem)
       logger.write(lineItem)
+      // const resultToPush = { id: pageId, score: score, url: , title:  }
+      // allResults.push(resultToPush)
       
     } catch (e) {
       console.error(e)
@@ -1293,9 +1348,79 @@ function scoreThis(content, term) {
   if(content.indexOf(searchTerm) > -1) {
     return true
   }
-  console.log('returning false for term', term)
   return false
 }
+
+
+const displayObjectResult = async (res, results, accessToken) => {
+  if(results.status === 'error') {
+    res.write(`<h3>WILL NOT WORK. MESSAGE IN A BOTTLE: ${results.message}</h3>`)
+    return
+  }
+  res.write('<h2>Here are the results</h2>')
+  const file = 'results.csv'
+  var logger = fs.createWriteStream(file, {
+    flags: 'a' // 'a' means appending (old data will be preserved)
+  })
+  // console.log('first result:', results[0])
+  // for output
+  // const lineItem = `${index},${score},${title},${url}\r\n`
+  logger.write(`ID,Score,URL,Title\r\n`)
+  // for ids
+  // logger.write(`[\r\n`)
+  const resultsAsCsv = await getCSVFromContentItems(results, logger)
+
+  res.write(resultsAsCsv)
+}
+
+
+// const queryOptions = {
+//   endpoint: '/contentsearch/v2/search',
+//   terms: [
+//     'debit+Card+Limits',
+//     'Debit+Spend+Limits',
+//     'Debit+Card+Spend',
+//     'Card+Spend+Limits',
+//     'Debit+Limits',
+//     'Debit+Spend',
+//     'Card+Limits'
+//   ],
+//   types: [
+//     'SITE_PAGE',
+//     'LANDING_PAGE'
+//   ],
+//   portalId: 1765103,
+//   baseUrl: HS_BASE_URL,
+//   limit: 100,
+//   offset: 0,
+//   property: 'html'
+// }
+
+
+// const getAdvancedScore = (contentSearchResult, accessToken) => {
+//   const headers = {
+//     Authorization: `Bearer ${accessToken}`,
+//     'Content-Type': 'application/json'
+//   }
+//   const pageQuery = queryOptions
+//   try {
+//     let apiQuery = `${pageQuery.baseUrl}/content/api/v2/pages/${contentSearchResult.id}`
+//     console.log('apiurl:', apiQuery)
+
+//     const result = await request.get(apiQuery, {
+//       headers: headers
+//     });
+//     const results = JSON.parse(result)
+//     console.log('result form individial query')
+//     console.log(results)
+//     return results.id
+
+//   } catch (e) {
+//     console.error(e)
+//     console.error('  > Unable to retrieve search')
+//     return JSON.parse(e)
+//   }
+// }
 
 const getCSVFromContentItems = async (results, logger) => {
   const data = []
@@ -1328,10 +1453,13 @@ app.get('/', async (req, res) => {
   res.write(`<h2>page id stuff that needs to work corerctly</h2>`)
   if (isAuthorized(req.sessionID)) {
     const accessToken = await getAccessToken(req.sessionID)
-    const whateverResults = await getPageResults(accessToken, pageIds)
     
+    const searchResults = await getPageResults(accessToken, pageIds);
     res.write(`<h4>Completed search results, writing now</h4>`)
-    res.write(`<h1>${whateverResults}</h1>`)
+    // res.write(`<h4>Access token: ${accessToken}</h4>`)
+
+    // const whatever = await displayObjectResult(res, searchResults)
+
   } else {
     res.write(`<a href="/install">Install the app to make this work right</a>`)
   }
@@ -1339,6 +1467,22 @@ app.get('/', async (req, res) => {
 })
 
 
+// app.get('/', async (req, res) => {
+//   res.setHeader('Content-Type', 'text/html')
+//   res.write(`<h2>chickens don't get a chance to gobble if they are always clucking up</h2>`)
+//   if (isAuthorized(req.sessionID)) {
+//     const accessToken = await getAccessToken(req.sessionID)
+    
+//     const searchResults = await getSearchResults(accessToken, queryOptions);
+
+//     res.write(`<h4>Access token: ${accessToken}</h4>`)
+//     const whatever = await displayObjectResult(res, searchResults, accessToken)
+
+//   } else {
+//     res.write(`<a href="/install">Install the app to make this work right</a>`)
+//   }
+//   res.end()
+// })
 
 app.get('/error', (req, res) => {
   res.setHeader('Content-Type', 'text/html')

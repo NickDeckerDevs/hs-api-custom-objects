@@ -1,8 +1,8 @@
 {
-  "name": "event_object",
+  "name": "event_object_noemail",
   "labels": {
-    "singular": "Event",
-    "plural": "Events"
+    "singular": "EEEEvent",
+    "plural": "EEEEvents"
   },
   "requiredProperties": [
     "event_id",
@@ -10,7 +10,6 @@
     "event_date",
     "first_name",
     "last_name",
-    "email",
     "rsvp",
     "guests"
   ],
@@ -37,12 +36,6 @@
     {
       "name": "last_name",
       "label": "Last Name",
-      "type": "string",
-      "fieldType": "text"
-    },
-    {
-      "name": "email",
-      "label": "Email Address",
       "type": "string",
       "fieldType": "text"
     },
